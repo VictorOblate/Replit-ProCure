@@ -1,0 +1,146 @@
+Procurement + Inventory Workflow and System Design
+Expanded Workflow
+1. Item Search Across Departments
+
+User checks stock across all departments.
+
+If available → Initiates borrow request.
+
+(i) User inputs item name, description, and quantity needed.
+
+(ii) User’s Department HOD reviews and approves.
+
+(iii) Borrow request is routed to the owning department.
+
+(iv) Owning Department HOD reviews and either approves or declines.
+
+(v) If approved → Borrow transaction logged, stock deducted from lending department, and added to borrower department.
+
+If unavailable → Initiate purchase requisition.
+
+2. Purchase Requisition
+
+User creates requisition with detailed item attributes (name, description, estimated cost, justification, required date, etc.).
+
+Department HOD reviews and either approves or declines.
+
+Procurement Manager reviews next.
+
+Finance Department performs budget availability check and either approves or declines. Only after Finance approval can the requisition proceed to quotation stage.
+
+3. Vendor Quotation & Purchase Order
+
+Procurement Manager requests quotations from onboarded vendors.
+
+Quotations compared and evaluated (best price, delivery timeline, vendor rating).
+
+Selected quotation → Purchase Order (PO) created.
+
+PO follows approval chain: HOD → Procurement Manager → Finance.
+
+Once Finance signs off on the PO, it is sent to the vendor and Finance for payment initiation.
+
+4. Vendor Management
+
+Procurement Manager can onboard vendors (with details: company name, registration, contacts, categories, compliance docs).
+
+Vendors must be approved and active before receiving RFQs or POs.
+
+Procurement Manager monitors vendor performance (timeliness, quality, pricing consistency).
+
+5. Stock Monitoring and Usage
+
+Every department’s inventory continuously tracked.
+
+Attributes per stock item:
+
+Item code, name, description
+
+Quantity available
+
+Quantity reserved (for pending requests)
+
+Unit of measure (e.g., packs, liters)
+
+Usage history (log of consumption, borrow, return)
+
+Minimum reorder level (system alerts when reached)
+
+Example: If department had 10 water packages and 4 were consumed, system shows 6 remaining and logs usage event.
+
+Borrowing process checks real-time available stock before allowing requests.
+
+Reports show consumption trends, top used items, and anomalies (e.g., sudden surge in usage).
+
+6. Approval Hierarchy (Mandatory)
+
+Step 1: Department HOD
+
+Step 2: Procurement Manager
+
+Step 3: Finance Department (budget validation and final approval)
+
+This sequence applies to all workflows: borrow requests, purchase requisitions, purchase orders.
+
+Major System Requirements
+
+Automated Stock Deduction
+
+Each approved usage (consumption) or borrow request automatically deducts the corresponding quantity from inventory.
+
+Deduction must reflect instantly across departments to avoid double-booking.
+
+Reorder Alerts
+
+System generates real-time alerts (email, in-app, or SMS) when stock levels fall below predefined reorder thresholds.
+
+Alerts visible to HOD, Procurement Manager, and Finance for proactive replenishment.
+
+Audit Logging
+
+Comprehensive logs for all actions: approvals, rejections, stock movements, and vendor interactions.
+
+Each log entry must capture: user ID, timestamp, action performed, and data affected.
+
+Audit trail ensures traceability for compliance and accountability.
+
+System Attributes
+User Roles
+
+General User: Can search, initiate borrow or purchase requisition.
+
+HOD: Approves/declines requests from department.
+
+Procurement Manager: Oversees all procurement activities, vendor management, quotation comparisons.
+
+Finance Officer: Confirms budget availability and gives final approval.
+
+Vendor: External role, responds to RFQs, receives POs.
+
+Features Needed
+
+Centralized stock database (with per-department visibility).
+
+Borrow request workflow with full approval chain.
+
+Purchase requisition and order workflow with full approval chain.
+
+Vendor onboarding and management module.
+
+Automated stock deduction upon approvals.
+
+Reorder alerts for low stock levels.
+
+Audit logs for all transactions and approvals.
+
+Reporting dashboards:
+
+Stock levels
+
+Usage and consumption trends
+
+Borrowing frequency
+
+Vendor performance
+
+Financial expenditure
