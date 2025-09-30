@@ -20,8 +20,11 @@ const borrowRequestSchema = z.object({
   owningDepartmentId: z.string().min(1, "Owning department is required"),
   quantityRequested: z.number().min(1, "Quantity must be at least 1"),
   justification: z.string().min(10, "Justification must be at least 10 characters"),
-  requiredDate: z.date(),
-});
+  requiredDate: z.date()
+}).transform(data => ({
+  ...data,
+  requiredDate: new Date(data.requiredDate) // Ensure it's a proper Date object
+}));
 
 type BorrowRequestData = z.infer<typeof borrowRequestSchema>;
 

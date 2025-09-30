@@ -1,176 +1,176 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, decimal, boolean, pgEnum } from "drizzle-orm/pg-core";
+import { mysqlTable, text, varchar, int, datetime, decimal, boolean, mysqlEnum } from "drizzle-orm/mysql-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Enums
-export const roleEnum = pgEnum('role', ['GENERAL_USER', 'HOD', 'PROCUREMENT_MANAGER', 'FINANCE_OFFICER']);
-export const statusEnum = pgEnum('status', ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED']);
-export const requestTypeEnum = pgEnum('request_type', ['BORROW', 'PURCHASE']);
-export const vendorStatusEnum = pgEnum('vendor_status', ['ACTIVE', 'INACTIVE', 'PENDING']);
-export const stockStatusEnum = pgEnum('stock_status', ['IN_STOCK', 'LOW_STOCK', 'OUT_OF_STOCK']);
+export const roleEnum = mysqlEnum('role', ['GENERAL_USER', 'HOD', 'PROCUREMENT_MANAGER', 'FINANCE_OFFICER']);
+export const statusEnum = mysqlEnum('status', ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED']);
+export const requestTypeEnum = mysqlEnum('request_type', ['BORROW', 'PURCHASE']);
+export const vendorStatusEnum = mysqlEnum('vendor_status', ['ACTIVE', 'INACTIVE', 'PENDING']);
+export const stockStatusEnum = mysqlEnum('stock_status', ['IN_STOCK', 'LOW_STOCK', 'OUT_OF_STOCK']);
 
 // Departments table
-export const departments = pgTable("departments", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+export const departments = mysqlTable("departments", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
   name: text("name").notNull().unique(),
-  hodId: varchar("hod_id"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  hodId: varchar("hod_id", { length: 36 }),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
 });
 
 // Users table
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+export const users = mysqlTable("users", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   email: text("email").notNull().unique(),
   fullName: text("full_name").notNull(),
-  role: roleEnum("role").notNull().default('GENERAL_USER'),
-  departmentId: varchar("department_id").references(() => departments.id),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  role: mysqlEnum("role", ['GENERAL_USER', 'HOD', 'PROCUREMENT_MANAGER', 'FINANCE_OFFICER']).notNull().default('GENERAL_USER'),
+  departmentId: varchar("department_id", { length: 36 }),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
 });
 
 // Categories table
-export const categories = pgTable("categories", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+export const categories = mysqlTable("categories", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
   name: text("name").notNull().unique(),
   description: text("description"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // Vendors table
-export const vendors = pgTable("vendors", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+export const vendors = mysqlTable("vendors", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
   name: text("name").notNull(),
   registrationNumber: text("registration_number"),
   email: text("email").notNull(),
   phone: text("phone"),
   address: text("address"),
   contactPerson: text("contact_person"),
-  status: vendorStatusEnum("status").notNull().default('PENDING'),
-  categories: text("categories").array(),
+  status: mysqlEnum("vendor_status", ['ACTIVE', 'INACTIVE', 'PENDING']).notNull().default('PENDING'),
+  categories: text("categories"),
   rating: decimal("rating", { precision: 3, scale: 2 }).default('0'),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
 });
 
 // Items table
-export const items = pgTable("items", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+export const items = mysqlTable("items", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
   description: text("description"),
-  categoryId: varchar("category_id").references(() => categories.id),
+  categoryId: varchar("category_id", { length: 36 }),
   unit: text("unit").notNull(), // e.g., pieces, liters, kg
-  minReorderLevel: integer("min_reorder_level").notNull().default(0),
+  minReorderLevel: int("min_reorder_level").notNull().default(0),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
 });
 
 // Stock table (per department inventory)
-export const stock = pgTable("stock", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  itemId: varchar("item_id").notNull().references(() => items.id),
-  departmentId: varchar("department_id").notNull().references(() => departments.id),
-  quantityAvailable: integer("quantity_available").notNull().default(0),
-  quantityReserved: integer("quantity_reserved").notNull().default(0),
-  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+export const stock = mysqlTable("stock", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
+  itemId: varchar("item_id", { length: 36 }).notNull(),
+  departmentId: varchar("department_id", { length: 36 }).notNull(),
+  quantityAvailable: int("quantity_available").notNull().default(0),
+  quantityReserved: int("quantity_reserved").notNull().default(0),
+  lastUpdated: datetime("last_updated").notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
 });
 
 // Borrow requests table
-export const borrowRequests = pgTable("borrow_requests", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  requesterId: varchar("requester_id").notNull().references(() => users.id),
-  requesterDepartmentId: varchar("requester_department_id").notNull().references(() => departments.id),
-  itemId: varchar("item_id").notNull().references(() => items.id),
-  owningDepartmentId: varchar("owning_department_id").notNull().references(() => departments.id),
-  quantityRequested: integer("quantity_requested").notNull(),
+export const borrowRequests = mysqlTable("borrow_requests", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
+  requesterId: varchar("requester_id", { length: 36 }).notNull(),
+  requesterDepartmentId: varchar("requester_department_id", { length: 36 }).notNull(),
+  itemId: varchar("item_id", { length: 36 }).notNull(),
+  owningDepartmentId: varchar("owning_department_id", { length: 36 }).notNull(),
+  quantityRequested: int("quantity_requested").notNull(),
   justification: text("justification").notNull(),
-  requiredDate: timestamp("required_date").notNull(),
-  status: statusEnum("status").notNull().default('PENDING'),
-  requesterHodApproval: statusEnum("requester_hod_approval").default('PENDING'),
-  ownerHodApproval: statusEnum("owner_hod_approval").default('PENDING'),
-  approvedBy: varchar("approved_by").references(() => users.id),
+  requiredDate: datetime("required_date").notNull(),
+  status: mysqlEnum("status", ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED']).notNull().default('PENDING'),
+  requesterHodApproval: mysqlEnum("requester_hod_approval", ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED']).default('PENDING'),
+  ownerHodApproval: mysqlEnum("owner_hod_approval", ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED']).default('PENDING'),
+  approvedBy: varchar("approved_by", { length: 36 }),
   rejectionReason: text("rejection_reason"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
 });
 
 // Purchase requisitions table
-export const purchaseRequisitions = pgTable("purchase_requisitions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  requesterId: varchar("requester_id").notNull().references(() => users.id),
-  departmentId: varchar("department_id").notNull().references(() => departments.id),
+export const purchaseRequisitions = mysqlTable("purchase_requisitions", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
+  requesterId: varchar("requester_id", { length: 36 }).notNull(),
+  departmentId: varchar("department_id", { length: 36 }).notNull(),
   itemName: text("item_name").notNull(),
   description: text("description").notNull(),
-  quantity: integer("quantity").notNull(),
+  quantity: int("quantity").notNull(),
   estimatedCost: decimal("estimated_cost", { precision: 10, scale: 2 }).notNull(),
   justification: text("justification").notNull(),
-  requiredDate: timestamp("required_date").notNull(),
-  status: statusEnum("status").notNull().default('PENDING'),
-  hodApproval: statusEnum("hod_approval").default('PENDING'),
-  procurementApproval: statusEnum("procurement_approval").default('PENDING'),
-  financeApproval: statusEnum("finance_approval").default('PENDING'),
-  approvedBy: varchar("approved_by").references(() => users.id),
+  requiredDate: datetime("required_date").notNull(),
+  status: mysqlEnum("status", ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED']).notNull().default('PENDING'),
+  hodApproval: mysqlEnum("hod_approval", ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED']).default('PENDING'),
+  procurementApproval: mysqlEnum("procurement_approval", ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED']).default('PENDING'),
+  financeApproval: mysqlEnum("finance_approval", ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED']).default('PENDING'),
+  approvedBy: varchar("approved_by", { length: 36 }),
   rejectionReason: text("rejection_reason"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
 });
 
 // Purchase orders table
-export const purchaseOrders = pgTable("purchase_orders", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  requisitionId: varchar("requisition_id").notNull().references(() => purchaseRequisitions.id),
-  vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
+export const purchaseOrders = mysqlTable("purchase_orders", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
+  requisitionId: varchar("requisition_id", { length: 36 }).notNull(),
+  vendorId: varchar("vendor_id", { length: 36 }).notNull(),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
-  status: statusEnum("status").notNull().default('PENDING'),
-  expectedDelivery: timestamp("expected_delivery"),
-  actualDelivery: timestamp("actual_delivery"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  status: mysqlEnum("status", ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED']).notNull().default('PENDING'),
+  expectedDelivery: datetime("expected_delivery"),
+  actualDelivery: datetime("actual_delivery"),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
 });
 
 // Quotations table
-export const quotations = pgTable("quotations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  requisitionId: varchar("requisition_id").notNull().references(() => purchaseRequisitions.id),
-  vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
+export const quotations = mysqlTable("quotations", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
+  requisitionId: varchar("requisition_id", { length: 36 }).notNull(),
+  vendorId: varchar("vendor_id", { length: 36 }).notNull(),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
   deliveryTimeline: text("delivery_timeline"),
-  validUntil: timestamp("valid_until"),
+  validUntil: datetime("valid_until"),
   isSelected: boolean("is_selected").default(false),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // Audit logs table
-export const auditLogs = pgTable("audit_logs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id),
+export const auditLogs = mysqlTable("audit_logs", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
+  userId: varchar("user_id", { length: 36 }),
   action: text("action").notNull(),
   entityType: text("entity_type").notNull(),
-  entityId: varchar("entity_id"),
+  entityId: varchar("entity_id", { length: 36 }),
   oldValues: text("old_values"), // JSON string
   newValues: text("new_values"), // JSON string
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // Stock movements table (for tracking usage history)
-export const stockMovements = pgTable("stock_movements", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  stockId: varchar("stock_id").notNull().references(() => stock.id),
-  movementType: text("movement_type").notNull(), // 'IN', 'OUT', 'TRANSFER', 'ADJUSTMENT'
-  quantity: integer("quantity").notNull(),
+export const stockMovements = mysqlTable("stock_movements", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
+  stockId: varchar("stock_id", { length: 36 }).notNull(),
+  movementType: text("movement_type").notNull(),
+  quantity: int("quantity").notNull(),
   reason: text("reason").notNull(),
-  referenceId: varchar("reference_id"), // Could reference borrow request, purchase order, etc.
-  performedBy: varchar("performed_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  referenceId: varchar("reference_id", { length: 36 }),
+  performedBy: varchar("performed_by", { length: 36 }),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // Relations
@@ -310,25 +310,21 @@ export const insertStockSchema = createInsertSchema(stock).omit({
   lastUpdated: true,
 });
 
-export const insertBorrowRequestSchema = createInsertSchema(borrowRequests).omit({
-  id: true,
-  status: true,
-  requesterHodApproval: true,
-  ownerHodApproval: true,
-  approvedBy: true,
-  createdAt: true,
-  updatedAt: true,
+export const insertBorrowRequestSchema = z.object({
+  itemId: z.string().min(1),
+  owningDepartmentId: z.string().min(1),
+  quantityRequested: z.number().min(1),
+  justification: z.string().min(1),
+  requiredDate: z.date().transform((date) => new Date(date.toISOString().split('T')[0])), // Format as YYYY-MM-DD
 });
 
-export const insertPurchaseRequisitionSchema = createInsertSchema(purchaseRequisitions).omit({
-  id: true,
-  status: true,
-  hodApproval: true,
-  procurementApproval: true,
-  financeApproval: true,
-  approvedBy: true,
-  createdAt: true,
-  updatedAt: true,
+export const insertPurchaseRequisitionSchema = z.object({
+  itemName: z.string().min(1),
+  description: z.string().min(1),
+  quantity: z.number().min(1),
+  estimatedCost: z.string().min(1),
+  justification: z.string().min(1),
+  requiredDate: z.date().transform((date) => new Date(date.toISOString().split('T')[0])), // Format as YYYY-MM-DD
 });
 
 export const insertVendorSchema = createInsertSchema(vendors).omit({

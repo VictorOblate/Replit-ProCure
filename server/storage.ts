@@ -6,16 +6,20 @@ import {
   type BorrowRequest, type InsertBorrowRequest, type PurchaseRequisition, 
   type InsertPurchaseRequisition, type Vendor, type InsertVendor,
   type Quotation, type InsertQuotation, type PurchaseOrder,
-  type AuditLog, type StockMovement, type InsertStockMovement
+  type AuditLog, type StockMovement, type InsertStockMovement,
+  statusEnum, roleEnum, vendorStatusEnum
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, sql, ilike, or } from "drizzle-orm";
 import session from "express-session";
-import connectPg from "connect-pg-simple";
 import type { Store } from "express-session";
-import { pool } from "./db";
+import { nanoid } from 'nanoid';
+import { getInsertedRecord, getUpdatedRecord } from './db-helpers';
 
-const PostgresSessionStore = connectPg(session);
+// For MySQL, use the default MemoryStore or a compatible MySQL session store
+// Example: https://www.npmjs.com/package/express-mysql-session
+// For now, use MemoryStore (not recommended for production)
+const MySQLSessionStore = session.MemoryStore;
 
 export interface IStorage {
   // User management
@@ -123,10 +127,8 @@ export class DatabaseStorage implements IStorage {
   public sessionStore: Store;
 
   constructor() {
-    this.sessionStore = new PostgresSessionStore({ 
-      pool, 
-      createTableIfMissing: true 
-    });
+    this.sessionStore = new MySQLSessionStore();
+    // For production, replace with a persistent MySQL session store
   }
 
   // User management
@@ -146,16 +148,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
-    return user;
+    const id = nanoid();
+    const user = { ...insertUser, id, createdAt: new Date(), updatedAt: new Date() };
+    await db.insert(users).values(user);
+    const newUser = await getInsertedRecord<User>(db, users, id);
+    if (!newUser) throw new Error('Failed to create user');
+    return newUser;
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
-    const [user] = await db.update(users)
+    await db.update(users)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(users.id, id))
-      .returning();
-    return user || undefined;
+      .where(eq(users.id, id));
+    return await getUpdatedRecord<User>(db, users, id);
   }
 
   // Department management
@@ -170,8 +175,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDepartment(department: InsertDepartment): Promise<Department> {
-    const [newDept] = await db.insert(departments).values(department).returning();
-    return newDept as Department;
+    const id = nanoid();
+    await db.insert(departments).values({ ...department, id });
+    const newDept = await getInsertedRecord<Department>(db, departments, id);
+    if (!newDept) throw new Error('Failed to create department');
+    return newDept;
   }
 
   async updateDepartment(id: string, updates: Partial<Department>): Promise<Department | undefined> {
@@ -188,7 +196,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCategory(category: { name: string; description?: string }): Promise<Category> {
-    const [newCategory] = await db.insert(categories).values(category).returning();
+    const id = nanoid();
+    const categoryData = { ...category, id, createdAt: new Date() };
+    await db.insert(categories).values(categoryData);
+    const newCategory = await getInsertedRecord<Category>(db, categories, id);
+    if (!newCategory) throw new Error('Failed to create category');
     return newCategory;
   }
 
@@ -208,16 +220,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createItem(item: InsertItem): Promise<Item> {
-    const [newItem] = await db.insert(items).values(item).returning();
+    const id = nanoid();
+    const itemData = { ...item, id, createdAt: new Date(), updatedAt: new Date() };
+    await db.insert(items).values(itemData);
+    const newItem = await getInsertedRecord<Item>(db, items, id);
+    if (!newItem) throw new Error('Failed to create item');
     return newItem;
   }
 
   async updateItem(id: string, updates: Partial<Item>): Promise<Item | undefined> {
-    const [item] = await db.update(items)
+    await db.update(items)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(items.id, id))
-      .returning();
-    return item || undefined;
+      .where(eq(items.id, id));
+    return await getUpdatedRecord<Item>(db, items, id);
   }
 
   async searchItems(query: string): Promise<Item[]> {
@@ -299,16 +314,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createStock(stockData: InsertStock): Promise<Stock> {
-    const [newStock] = await db.insert(stock).values(stockData).returning();
+    const id = nanoid();
+    const stockWithId = { ...stockData, id, lastUpdated: new Date() };
+    await db.insert(stock).values(stockWithId);
+    const newStock = await getInsertedRecord<Stock>(db, stock, id);
+    if (!newStock) throw new Error('Failed to create stock');
     return newStock;
   }
 
   async updateStock(id: string, updates: Partial<Stock>): Promise<Stock | undefined> {
-    const [updatedStock] = await db.update(stock)
+    await db.update(stock)
       .set({ ...updates, lastUpdated: new Date() })
-      .where(eq(stock.id, id))
-      .returning();
-    return updatedStock || undefined;
+      .where(eq(stock.id, id));
+    return await getUpdatedRecord<Stock>(db, stock, id);
   }
 
   async getLowStockItems(): Promise<any[]> {
@@ -334,12 +352,15 @@ export class DatabaseStorage implements IStorage {
 
   // Borrow request management
   async getBorrowRequests(): Promise<any[]> {
+    const requesterDept = sql`requester_dept`;
+    const ownerDept = sql`owner_dept`;
+    
     return await db.select({
       id: borrowRequests.id,
       requester: users.fullName,
-      requesterDepartment: sql`req_dept.name`.as('requesterDepartmentName'),
+      requesterDepartment: sql<string>`${requesterDept}.name`,
       item: items.name,
-      owningDepartment: sql`own_dept.name`.as('owningDepartmentName'),
+      owningDepartment: sql<string>`${ownerDept}.name`,
       quantityRequested: borrowRequests.quantityRequested,
       justification: borrowRequests.justification,
       requiredDate: borrowRequests.requiredDate,
@@ -350,23 +371,26 @@ export class DatabaseStorage implements IStorage {
     })
     .from(borrowRequests)
     .innerJoin(users, eq(borrowRequests.requesterId, users.id))
-    .innerJoin(departments.as('req_dept'), eq(borrowRequests.requesterDepartmentId, sql`req_dept.id`))
-    .innerJoin(departments.as('own_dept'), eq(borrowRequests.owningDepartmentId, sql`own_dept.id`))
+    .innerJoin(sql<any>`${departments} AS ${requesterDept}`, eq(borrowRequests.requesterDepartmentId, sql`${requesterDept}.id`))
+    .innerJoin(sql<any>`${departments} AS ${ownerDept}`, eq(borrowRequests.owningDepartmentId, sql`${ownerDept}.id`))
     .innerJoin(items, eq(borrowRequests.itemId, items.id))
     .orderBy(desc(borrowRequests.createdAt));
   }
 
   async getBorrowRequest(id: string): Promise<any> {
+    const requesterDept = sql`requester_dept`;
+    const ownerDept = sql`owner_dept`;
+
     const [request] = await db.select({
       id: borrowRequests.id,
       requesterId: borrowRequests.requesterId,
       requester: users.fullName,
       requesterDepartmentId: borrowRequests.requesterDepartmentId,
-      requesterDepartment: sql`req_dept.name`.as('requesterDepartmentName'),
+      requesterDepartment: sql<string>`${requesterDept}.name`,
       itemId: borrowRequests.itemId,
       item: items.name,
       owningDepartmentId: borrowRequests.owningDepartmentId,
-      owningDepartment: sql`own_dept.name`.as('owningDepartmentName'),
+      owningDepartment: sql<string>`${ownerDept}.name`,
       quantityRequested: borrowRequests.quantityRequested,
       justification: borrowRequests.justification,
       requiredDate: borrowRequests.requiredDate,
@@ -380,8 +404,8 @@ export class DatabaseStorage implements IStorage {
     })
     .from(borrowRequests)
     .innerJoin(users, eq(borrowRequests.requesterId, users.id))
-    .innerJoin(departments.as('req_dept'), eq(borrowRequests.requesterDepartmentId, sql`req_dept.id`))
-    .innerJoin(departments.as('own_dept'), eq(borrowRequests.owningDepartmentId, sql`own_dept.id`))
+    .innerJoin(sql<any>`${departments} AS ${requesterDept}`, eq(borrowRequests.requesterDepartmentId, sql`${requesterDept}.id`))
+    .innerJoin(sql<any>`${departments} AS ${ownerDept}`, eq(borrowRequests.owningDepartmentId, sql`${ownerDept}.id`))
     .innerJoin(items, eq(borrowRequests.itemId, items.id))
     .where(eq(borrowRequests.id, id));
     
@@ -389,12 +413,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getBorrowRequestsByRequester(requesterId: string): Promise<any[]> {
+    const requesterDept = sql`requester_dept`;
+    const ownerDept = sql`owner_dept`;
+    
     return await db.select({
       id: borrowRequests.id,
       requester: users.fullName,
-      requesterDepartment: sql`req_dept.name`.as('requesterDepartmentName'),
+      requesterDepartment: sql<string>`${requesterDept}.name`,
       item: items.name,
-      owningDepartment: sql`own_dept.name`.as('owningDepartmentName'),
+      owningDepartment: sql<string>`${ownerDept}.name`,
       quantityRequested: borrowRequests.quantityRequested,
       justification: borrowRequests.justification,
       requiredDate: borrowRequests.requiredDate,
@@ -405,20 +432,23 @@ export class DatabaseStorage implements IStorage {
     })
     .from(borrowRequests)
     .innerJoin(users, eq(borrowRequests.requesterId, users.id))
-    .innerJoin(departments.as('req_dept'), eq(borrowRequests.requesterDepartmentId, sql`req_dept.id`))
-    .innerJoin(departments.as('own_dept'), eq(borrowRequests.owningDepartmentId, sql`own_dept.id`))
+    .innerJoin(sql<any>`${departments} AS ${requesterDept}`, eq(borrowRequests.requesterDepartmentId, sql`${requesterDept}.id`))
+    .innerJoin(sql<any>`${departments} AS ${ownerDept}`, eq(borrowRequests.owningDepartmentId, sql`${ownerDept}.id`))
     .innerJoin(items, eq(borrowRequests.itemId, items.id))
     .where(eq(borrowRequests.requesterId, requesterId))
     .orderBy(desc(borrowRequests.createdAt));
   }
 
   async getBorrowRequestsByDepartment(departmentId: string): Promise<any[]> {
+    const requesterDept = sql`requester_dept`;
+    const ownerDept = sql`owner_dept`;
+    
     return await db.select({
       id: borrowRequests.id,
       requester: users.fullName,
-      requesterDepartment: sql`req_dept.name`.as('requesterDepartmentName'),
+      requesterDepartment: sql<string>`${requesterDept}.name`,
       item: items.name,
-      owningDepartment: sql`own_dept.name`.as('owningDepartmentName'),
+      owningDepartment: sql<string>`${ownerDept}.name`,
       quantityRequested: borrowRequests.quantityRequested,
       justification: borrowRequests.justification,
       requiredDate: borrowRequests.requiredDate,
@@ -429,8 +459,8 @@ export class DatabaseStorage implements IStorage {
     })
     .from(borrowRequests)
     .innerJoin(users, eq(borrowRequests.requesterId, users.id))
-    .innerJoin(departments.as('req_dept'), eq(borrowRequests.requesterDepartmentId, sql`req_dept.id`))
-    .innerJoin(departments.as('own_dept'), eq(borrowRequests.owningDepartmentId, sql`own_dept.id`))
+    .innerJoin(sql<any>`${departments} AS ${requesterDept}`, eq(borrowRequests.requesterDepartmentId, sql`${requesterDept}.id`))
+    .innerJoin(sql<any>`${departments} AS ${ownerDept}`, eq(borrowRequests.owningDepartmentId, sql`${ownerDept}.id`))
     .innerJoin(items, eq(borrowRequests.itemId, items.id))
     .where(or(
       eq(borrowRequests.requesterDepartmentId, departmentId),
@@ -440,12 +470,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPendingBorrowRequests(): Promise<any[]> {
+    const requesterDept = sql`requester_dept`;
+    const ownerDept = sql`owner_dept`;
+    
     return await db.select({
       id: borrowRequests.id,
       requester: users.fullName,
-      requesterDepartment: sql`req_dept.name`.as('requesterDepartmentName'),
+      requesterDepartment: sql<string>`${requesterDept}.name`,
       item: items.name,
-      owningDepartment: sql`own_dept.name`.as('owningDepartmentName'),
+      owningDepartment: sql<string>`${ownerDept}.name`,
       quantityRequested: borrowRequests.quantityRequested,
       justification: borrowRequests.justification,
       requiredDate: borrowRequests.requiredDate,
@@ -456,24 +489,35 @@ export class DatabaseStorage implements IStorage {
     })
     .from(borrowRequests)
     .innerJoin(users, eq(borrowRequests.requesterId, users.id))
-    .innerJoin(departments.as('req_dept'), eq(borrowRequests.requesterDepartmentId, sql`req_dept.id`))
-    .innerJoin(departments.as('own_dept'), eq(borrowRequests.owningDepartmentId, sql`own_dept.id`))
+    .innerJoin(sql<any>`${departments} AS ${requesterDept}`, eq(borrowRequests.requesterDepartmentId, sql`${requesterDept}.id`))
+    .innerJoin(sql<any>`${departments} AS ${ownerDept}`, eq(borrowRequests.owningDepartmentId, sql`${ownerDept}.id`))
     .innerJoin(items, eq(borrowRequests.itemId, items.id))
     .where(eq(borrowRequests.status, 'PENDING'))
     .orderBy(desc(borrowRequests.createdAt));
   }
 
   async createBorrowRequest(request: InsertBorrowRequest): Promise<BorrowRequest> {
-    const [newRequest] = await db.insert(borrowRequests).values(request).returning();
+    const id = nanoid();
+    const requestWithId = {
+      ...request,
+      id,
+      status: 'PENDING',
+      requesterHodApproval: 'PENDING',
+      ownerHodApproval: 'PENDING',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    await db.insert(borrowRequests).values(requestWithId);
+    const newRequest = await getInsertedRecord<BorrowRequest>(db, borrowRequests, id);
+    if (!newRequest) throw new Error('Failed to create borrow request');
     return newRequest;
   }
 
   async updateBorrowRequest(id: string, updates: Partial<BorrowRequest>): Promise<BorrowRequest | undefined> {
-    const [request] = await db.update(borrowRequests)
+    await db.update(borrowRequests)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(borrowRequests.id, id))
-      .returning();
-    return request || undefined;
+      .where(eq(borrowRequests.id, id));
+    return await getUpdatedRecord<BorrowRequest>(db, borrowRequests, id);
   }
 
   // Purchase requisition management
@@ -603,16 +647,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPurchaseRequisition(requisition: InsertPurchaseRequisition): Promise<PurchaseRequisition> {
-    const [newRequisition] = await db.insert(purchaseRequisitions).values(requisition).returning();
+    const id = nanoid();
+    const requisitionWithId = {
+      ...requisition,
+      id,
+      status: 'PENDING',
+      hodApproval: 'PENDING',
+      procurementApproval: 'PENDING',
+      financeApproval: 'PENDING',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    await db.insert(purchaseRequisitions).values(requisitionWithId);
+    const newRequisition = await getInsertedRecord<PurchaseRequisition>(db, purchaseRequisitions, id);
+    if (!newRequisition) throw new Error('Failed to create purchase requisition');
     return newRequisition;
   }
 
   async updatePurchaseRequisition(id: string, updates: Partial<PurchaseRequisition>): Promise<PurchaseRequisition | undefined> {
-    const [requisition] = await db.update(purchaseRequisitions)
+    await db.update(purchaseRequisitions)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(purchaseRequisitions.id, id))
-      .returning();
-    return requisition || undefined;
+      .where(eq(purchaseRequisitions.id, id));
+    return await getUpdatedRecord<PurchaseRequisition>(db, purchaseRequisitions, id);
   }
 
   // Vendor management
@@ -632,16 +688,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createVendor(vendor: InsertVendor): Promise<Vendor> {
-    const [newVendor] = await db.insert(vendors).values(vendor).returning();
+    const id = nanoid();
+    const vendorWithId = {
+      ...vendor,
+      id,
+      status: 'PENDING',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    await db.insert(vendors).values(vendorWithId);
+    const newVendor = await getInsertedRecord<Vendor>(db, vendors, id);
+    if (!newVendor) throw new Error('Failed to create vendor');
     return newVendor;
   }
 
   async updateVendor(id: string, updates: Partial<Vendor>): Promise<Vendor | undefined> {
-    const [vendor] = await db.update(vendors)
+    await db.update(vendors)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(vendors.id, id))
-      .returning();
-    return vendor || undefined;
+      .where(eq(vendors.id, id));
+    return await getUpdatedRecord<Vendor>(db, vendors, id);
   }
 
   // Quotation management
@@ -682,16 +747,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createQuotation(quotation: InsertQuotation): Promise<Quotation> {
-    const [newQuotation] = await db.insert(quotations).values(quotation).returning();
+    const id = nanoid();
+    const quotationWithId = {
+      ...quotation,
+      id,
+      isSelected: false,
+      createdAt: new Date()
+    };
+    await db.insert(quotations).values(quotationWithId);
+    const newQuotation = await getInsertedRecord<Quotation>(db, quotations, id);
+    if (!newQuotation) throw new Error('Failed to create quotation');
     return newQuotation;
   }
 
   async updateQuotation(id: string, updates: Partial<Quotation>): Promise<Quotation | undefined> {
-    const [quotation] = await db.update(quotations)
+    await db.update(quotations)
       .set(updates)
-      .where(eq(quotations.id, id))
-      .returning();
-    return quotation || undefined;
+      .where(eq(quotations.id, id));
+    return await getUpdatedRecord<Quotation>(db, quotations, id);
   }
 
   // Purchase order management
@@ -732,26 +805,43 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPurchaseOrder(order: { requisitionId: string; vendorId: string; totalAmount: string; expectedDelivery?: Date }): Promise<PurchaseOrder> {
-    const [newOrder] = await db.insert(purchaseOrders).values(order).returning();
+    const id = nanoid();
+    const orderWithId = {
+      ...order,
+      id,
+      status: "PENDING" as const,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    await db.insert(purchaseOrders).values(orderWithId);
+    const newOrder = await getInsertedRecord<PurchaseOrder>(db, purchaseOrders, id);
+    if (!newOrder) throw new Error('Failed to create purchase order');
     return newOrder;
   }
 
   async updatePurchaseOrder(id: string, updates: Partial<PurchaseOrder>): Promise<PurchaseOrder | undefined> {
-    const [order] = await db.update(purchaseOrders)
+    await db.update(purchaseOrders)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(purchaseOrders.id, id))
-      .returning();
-    return order || undefined;
+      .where(eq(purchaseOrders.id, id));
+    return await getUpdatedRecord<PurchaseOrder>(db, purchaseOrders, id);
   }
 
   // Stock movement management
   async createStockMovement(movement: InsertStockMovement): Promise<StockMovement> {
-    const [newMovement] = await db.insert(stockMovements).values(movement).returning();
+    const id = nanoid();
+    const movementWithId = {
+      ...movement,
+      id,
+      createdAt: new Date()
+    };
+    await db.insert(stockMovements).values(movementWithId);
+    const newMovement = await getInsertedRecord<StockMovement>(db, stockMovements, id);
+    if (!newMovement) throw new Error('Failed to create stock movement');
     return newMovement;
   }
 
   async getStockMovements(stockId?: string): Promise<any[]> {
-    let query = db.select({
+    const baseQuery = {
       id: stockMovements.id,
       stockId: stockMovements.stockId,
       movementType: stockMovements.movementType,
@@ -760,15 +850,17 @@ export class DatabaseStorage implements IStorage {
       referenceId: stockMovements.referenceId,
       performedBy: users.fullName,
       createdAt: stockMovements.createdAt
-    })
-    .from(stockMovements)
-    .leftJoin(users, eq(stockMovements.performedBy, users.id));
+    };
 
-    if (stockId) {
-      query = query.where(eq(stockMovements.stockId, stockId)) as any;
-    }
+    const whereClause = stockId ? eq(stockMovements.stockId, stockId) : undefined;
 
-    return await query.orderBy(desc(stockMovements.createdAt));
+    const result = await db.select(baseQuery)
+      .from(stockMovements)
+      .leftJoin(users, eq(stockMovements.performedBy, users.id))
+      .where(whereClause)
+      .orderBy(desc(stockMovements.createdAt));
+
+    return result;
   }
 
   // Audit logging
@@ -782,7 +874,15 @@ export class DatabaseStorage implements IStorage {
     ipAddress?: string; 
     userAgent?: string; 
   }): Promise<AuditLog> {
-    const [newLog] = await db.insert(auditLogs).values(log).returning();
+    const id = nanoid();
+    const logWithId = {
+      ...log,
+      id,
+      createdAt: new Date()
+    };
+    await db.insert(auditLogs).values(logWithId);
+    const newLog = await getInsertedRecord<AuditLog>(db, auditLogs, id);
+    if (!newLog) throw new Error('Failed to create audit log');
     return newLog;
   }
 
