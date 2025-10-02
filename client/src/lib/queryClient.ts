@@ -12,7 +12,12 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  // Use the GitHub.dev URL for the API
+  const apiUrl = 'https://musical-journey-69p46vx49wwvh457p-5000.app.github.dev';
+  const path = url.replace(/^\//, ''); // Remove leading slash if present
+  const fullUrl = `${apiUrl}/${path}`;
+  
+  const res = await fetch(fullUrl, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
@@ -29,7 +34,9 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    const apiUrl = 'https://musical-journey-69p46vx49wwvh457p-5000.app.github.dev';
+    const path = queryKey.join("/").replace(/^\//, ''); // Remove leading slash if present
+    const res = await fetch(`${apiUrl}/${path}`, {
       credentials: "include",
     });
 
