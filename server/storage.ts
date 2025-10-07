@@ -501,6 +501,7 @@ export class DatabaseStorage implements IStorage {
     const requestWithId = {
       ...request,
       id,
+      requiredDate: new Date(request.requiredDate), // Convert ISO string to Date
       status: 'PENDING',
       requesterHodApproval: 'PENDING',
       ownerHodApproval: 'PENDING',
@@ -646,15 +647,18 @@ export class DatabaseStorage implements IStorage {
     .orderBy(desc(purchaseRequisitions.createdAt));
   }
 
-  async createPurchaseRequisition(requisition: InsertPurchaseRequisition): Promise<PurchaseRequisition> {
+  async createPurchaseRequisition(requisition: InsertPurchaseRequisition & { requesterId: string; departmentId: string }): Promise<PurchaseRequisition> {
     const id = nanoid();
     const requisitionWithId = {
       ...requisition,
       id,
-      status: 'PENDING',
-      hodApproval: 'PENDING',
-      procurementApproval: 'PENDING',
-      financeApproval: 'PENDING',
+      requesterId: requisition.requesterId,
+      departmentId: requisition.departmentId,
+      requiredDate: new Date(requisition.requiredDate), // Convert ISO string to Date
+      status: 'PENDING' as const,
+      hodApproval: 'PENDING' as const,
+      procurementApproval: 'PENDING' as const,
+      financeApproval: 'PENDING' as const,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -692,7 +696,7 @@ export class DatabaseStorage implements IStorage {
     const vendorWithId = {
       ...vendor,
       id,
-      status: 'PENDING',
+      status: 'PENDING' as const,
       createdAt: new Date(),
       updatedAt: new Date()
     };

@@ -321,7 +321,9 @@ export const insertBorrowRequestSchema = z.object({
   owningDepartmentId: z.string().min(1),
   quantityRequested: z.number().min(1),
   justification: z.string().min(1),
-  requiredDate: z.date().transform((date) => new Date(date.toISOString().split('T')[0])), // Format as YYYY-MM-DD
+  requiredDate: z.coerce.date(),
+  requesterId: z.string().min(1).optional(), // Will be provided by server
+  requesterDepartmentId: z.string().min(1).optional(), // Will be provided by server
 });
 
 export const insertPurchaseRequisitionSchema = z.object({
@@ -330,7 +332,9 @@ export const insertPurchaseRequisitionSchema = z.object({
   quantity: z.number().min(1),
   estimatedCost: z.string().min(1),
   justification: z.string().min(1),
-  requiredDate: z.date().transform((date) => new Date(date.toISOString().split('T')[0])), // Format as YYYY-MM-DD
+  requiredDate: z.coerce.date(),
+  requesterId: z.string().min(1).optional(), // Will be provided by server
+  departmentId: z.string().min(1).optional(), // Will be provided by server
 });
 
 export const insertVendorSchema = createInsertSchema(vendors).omit({

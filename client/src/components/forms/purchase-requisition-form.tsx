@@ -62,6 +62,7 @@ export function PurchaseRequisitionForm({ onSuccess }: PurchaseRequisitionFormPr
       onSuccess();
     },
     onError: (error) => {
+      console.log("Here is the error: ", error)
       toast({ 
         title: "Failed to submit purchase requisition", 
         description: error.message, 

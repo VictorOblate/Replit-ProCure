@@ -68,9 +68,12 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
         ...data,
         requiredDate: data.requiredDate.toISOString()
       };
+      console.log("Request Data: ", requestData);
       const response = await apiRequest("POST", "/api/borrow-requests", requestData);
       return response.json();
     },
+
+
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/borrow-requests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
@@ -78,8 +81,9 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
       onSuccess();
     },
     onError: (error) => {
+      console.log("Here is the error: ", error)
       toast({ 
-        title: "Failed to submit borrow request", 
+        title: "Failed to submit borrow request. Joh", 
         description: error.message, 
         variant: "destructive" 
       });
