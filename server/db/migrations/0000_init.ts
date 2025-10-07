@@ -80,3 +80,19 @@ export const stock = mysqlTable("stock", {
   quantityReserved: int("quantity_reserved").notNull().default(0),
   lastUpdated: datetime("last_updated").notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
 });
+
+// Vendors table
+export const vendors = mysqlTable("vendors", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
+  name: text("name").notNull(),
+  registrationNumber: text("registration_number"),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  address: text("address"),
+  contactPerson: text("contact_person"),
+  vendor_status: mysqlEnum("vendor_status", ['ACTIVE', 'INACTIVE', 'PENDING']).notNull().default('PENDING'),
+  categories: text("categories"),
+  rating: decimal("rating", { precision: 3, scale: 2 }).default('0'),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+});

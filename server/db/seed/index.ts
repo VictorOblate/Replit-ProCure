@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { db } from '../../db';
 import { 
   departments, 
   users, 
@@ -16,7 +16,7 @@ import {
 import { nanoid } from 'nanoid';
 import { eq } from 'drizzle-orm';
 
-import { hashPassword } from '../auth';
+import { hashPassword } from '../../auth';
 
 async function seed() {
   try {
@@ -275,9 +275,7 @@ async function seed() {
         requesterHodApproval: 'PENDING',
         ownerHodApproval: 'PENDING',
         approvedBy: null,
-        rejectionReason: null,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        rejectionReason: null
       }
     ]);
 

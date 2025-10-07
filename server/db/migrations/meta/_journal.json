@@ -8,6 +8,13 @@
       "when": 1759328645870,
       "tag": "0000_zippy_radioactive_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1759402373653,
+      "tag": "0001_strong_cassandra_nova",
+      "breakpoints": true
     }
   ]
 }

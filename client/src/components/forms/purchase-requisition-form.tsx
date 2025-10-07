@@ -17,8 +17,9 @@ import { cn } from "@/lib/utils";
 const purchaseRequisitionSchema = z.object({
   itemName: z.string().min(1, "Item name is required"),
   description: z.string().min(10, "Description must be at least 10 characters"),
-  quantity: z.number().min(1, "Quantity must be at least 1"),
-  estimatedCost: z.string().min(1, "Estimated cost is required"),
+  quantity: z.coerce.number().min(1, "Quantity must be at least 1"),
+  estimatedCost: z.coerce.number().min(0.01, "Estimated cost must be greater than 0")
+    .transform(val => val.toFixed(2)), // Format as string with 2 decimal places
   justification: z.string().min(10, "Justification must be at least 10 characters"),
   requiredDate: z.date(),
 });
@@ -47,7 +48,11 @@ export function PurchaseRequisitionForm({ onSuccess }: PurchaseRequisitionFormPr
 
   const createPurchaseRequisitionMutation = useMutation({
     mutationFn: async (data: PurchaseRequisitionData) => {
-      const response = await apiRequest("POST", "/api/purchase-requisitions", data);
+      const requestData = {
+        ...data,
+        requiredDate: data.requiredDate.toISOString()
+      };
+      const response = await apiRequest("POST", "/api/purchase-requisitions", requestData);
       return response.json();
     },
     onSuccess: () => {
@@ -120,7 +125,7 @@ export function PurchaseRequisitionForm({ onSuccess }: PurchaseRequisitionFormPr
                     type="number" 
                     min="1"
                     {...field}
-                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                    onChange={e => field.onChange(e.target.value)}
                     data-testid="input-purchase-quantity"
                   />
                 </FormControl>

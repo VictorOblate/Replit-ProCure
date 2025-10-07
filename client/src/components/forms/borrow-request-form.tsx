@@ -18,13 +18,10 @@ import { cn } from "@/lib/utils";
 const borrowRequestSchema = z.object({
   itemId: z.string().min(1, "Item is required"),
   owningDepartmentId: z.string().min(1, "Owning department is required"),
-  quantityRequested: z.number().min(1, "Quantity must be at least 1"),
+  quantityRequested: z.coerce.number().min(1, "Quantity must be at least 1"),
   justification: z.string().min(10, "Justification must be at least 10 characters"),
   requiredDate: z.date()
-}).transform(data => ({
-  ...data,
-  requiredDate: new Date(data.requiredDate) // Ensure it's a proper Date object
-}));
+});
 
 type BorrowRequestData = z.infer<typeof borrowRequestSchema>;
 
@@ -36,15 +33,21 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: items = [] } = useQuery({
+  const { data: items = [] } = useQuery<Array<{id: string; code: string; name: string}>>({
     queryKey: ["/api/items"],
   });
 
-  const { data: departments = [] } = useQuery({
+  const { data: departments = [] } = useQuery<Array<{id: string; name: string}>>({
     queryKey: ["/api/departments"],
   });
 
-  const { data: stockData = [] } = useQuery({
+  const { data: stockData = [] } = useQuery<Array<{
+    id: string;
+    itemId: string;
+    departmentName: string;
+    quantityAvailable: number;
+    unit: string;
+  }>>({
     queryKey: ["/api/stock"],
   });
 
@@ -61,7 +64,11 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
 
   const createBorrowRequestMutation = useMutation({
     mutationFn: async (data: BorrowRequestData) => {
-      const response = await apiRequest("POST", "/api/borrow-requests", data);
+      const requestData = {
+        ...data,
+        requiredDate: data.requiredDate.toISOString()
+      };
+      const response = await apiRequest("POST", "/api/borrow-requests", requestData);
       return response.json();
     },
     onSuccess: () => {

@@ -6,7 +6,13 @@ import { z } from "zod";
 
 // Enums
 export const roleEnum = mysqlEnum('role', ['GENERAL_USER', 'HOD', 'PROCUREMENT_MANAGER', 'FINANCE_OFFICER']);
-export const statusEnum = mysqlEnum('status', ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED']);
+// Base status enum for reference
+export const statusEnum = ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED'] as const;
+
+// Specific status enums for different tables
+export const borrowStatusEnum = mysqlEnum('borrow_status', statusEnum);
+export const requisitionStatusEnum = mysqlEnum('requisition_status', statusEnum);
+export const purchaseOrderStatusEnum = mysqlEnum('purchase_order_status', statusEnum);
 export const requestTypeEnum = mysqlEnum('request_type', ['BORROW', 'PURCHASE']);
 export const vendorStatusEnum = mysqlEnum('vendor_status', ['ACTIVE', 'INACTIVE', 'PENDING']);
 export const stockStatusEnum = mysqlEnum('stock_status', ['IN_STOCK', 'LOW_STOCK', 'OUT_OF_STOCK']);
@@ -92,8 +98,8 @@ export const borrowRequests = mysqlTable("borrow_requests", {
   justification: text("justification").notNull(),
   requiredDate: datetime("required_date").notNull(),
   status: mysqlEnum("status", ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED']).notNull().default('PENDING'),
-  requesterHodApproval: mysqlEnum("requester_hod_approval", ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED']).default('PENDING'),
-  ownerHodApproval: mysqlEnum("owner_hod_approval", ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED']).default('PENDING'),
+  requesterHodApproval: mysqlEnum("requester_hod_approval", ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED']).notNull().default('PENDING'),
+  ownerHodApproval: mysqlEnum("owner_hod_approval", ['PENDING', 'APPROVED', 'REJECTED', 'COMPLETED']).notNull().default('PENDING'),
   approvedBy: varchar("approved_by", { length: 36 }),
   rejectionReason: text("rejection_reason"),
   createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
