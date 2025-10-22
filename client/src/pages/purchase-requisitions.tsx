@@ -111,7 +111,7 @@ export default function PurchaseRequisitions() {
                             <TableCell>{requisition.itemName}</TableCell>
                             <TableCell>{requisition.department}</TableCell>
                             <TableCell>{requisition.quantity}</TableCell>
-                            <TableCell>${requisition.estimatedCost}</TableCell>
+                            <TableCell>M{requisition.estimatedCost}</TableCell>
                             <TableCell>
                               {new Date(requisition.requiredDate).toLocaleDateString()}
                             </TableCell>

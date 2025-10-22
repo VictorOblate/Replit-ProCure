@@ -11,7 +11,7 @@ export function KPICards() {
   const kpiCards = [
     {
       title: "Total Stock Value",
-      value: stats ? `$${stats.totalStockValue.toLocaleString()}` : "$0",
+      value: stats ? `M${stats.totalStockValue.toLocaleString()}` : "M0",
       change: "+12.5%",
       changeType: "positive" as const,
       icon: DollarSign,

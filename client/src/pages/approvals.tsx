@@ -295,7 +295,7 @@ export default function Approvals() {
                               <TableCell>{request.itemName}</TableCell>
                               <TableCell>{request.department}</TableCell>
                               <TableCell>{request.quantity}</TableCell>
-                              <TableCell>${request.estimatedCost}</TableCell>
+                              <TableCell>M{request.estimatedCost}</TableCell>
                               <TableCell className="max-w-xs truncate">{request.justification}</TableCell>
                               <TableCell>
                                 {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}

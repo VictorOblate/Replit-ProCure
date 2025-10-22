@@ -140,7 +140,7 @@ export function PurchaseRequisitionForm({ onSuccess }: PurchaseRequisitionFormPr
             name="estimatedCost"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Estimated Cost ($)</FormLabel>
+                <FormLabel>Estimated Cost (M)</FormLabel>
                 <FormControl>
                   <Input 
                     type="number"

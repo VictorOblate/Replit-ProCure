@@ -965,7 +965,7 @@ export class DatabaseStorage implements IStorage {
       id: purchaseRequisitions.id,
       type: sql<string>`'purchase_requisition'`,
       title: sql<string>`'Purchase requisition submitted'`,
-      description: sql<string>`${users.fullName} || ' requested ' || ${purchaseRequisitions.itemName} || ' - $' || ${purchaseRequisitions.estimatedCost}`,
+      description: sql<string>`${users.fullName} || ' requested ' || ${purchaseRequisitions.itemName} || ' - M' || ${purchaseRequisitions.estimatedCost}`,
       user: users.fullName,
       status: purchaseRequisitions.status,
       timestamp: purchaseRequisitions.createdAt,

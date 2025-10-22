@@ -108,7 +108,7 @@ export function PendingApprovals() {
       id: req.id,
       type: "purchase",
       title: `Purchase: ${req.itemName}`,
-      description: `$${req.estimatedCost} - ${req.department}`,
+      description: `M${req.estimatedCost} - ${req.department}`,
       bgColor: "bg-amber-50",
       borderColor: "border-amber-200",
     })),
